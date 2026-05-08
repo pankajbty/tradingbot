@@ -1,5 +1,4 @@
 {% extends "admin/base_site.html" %}
-{% load i18n %}
 
 {% block title %}Bot Control — Trading Bot Admin{% endblock %}
 
@@ -11,366 +10,578 @@
 
 {% block content %}
 <style>
-  /* ── Control card ─────────────────────────────────────── */
+  /* ── Reset & base ───────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; }
+
+  .bc-page { max-width: 1100px; }
+
+  /* ── Cards ──────────────────────────────────────────────────────── */
   .bc-card {
     background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    padding: 20px 24px;
-    margin-bottom: 24px;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    margin-bottom: 20px;
+    overflow: hidden;
   }
-  .bc-card h2 {
-    margin: 0 0 16px;
-    font-size: 15px;
-    font-weight: 600;
-    color: #333;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 10px;
+  .bc-card-header {
+    padding: 14px 22px;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .bc-card-header h2 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    color: #6b7280;
+  }
+  .bc-card-body { padding: 24px 22px; }
+
+  /* ── Status row ─────────────────────────────────────────────────── */
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    flex-wrap: wrap;
+  }
+  .status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .status-dot {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .status-dot.running {
+    background: #22c55e;
+    box-shadow: 0 0 0 4px rgba(34,197,94,.2);
+    animation: pulse 1.8s ease infinite;
+  }
+  .status-dot.stopped { background: #ef4444; }
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 0 4px rgba(34,197,94,.2); }
+    50%      { box-shadow: 0 0 0 8px rgba(34,197,94,.05); }
+  }
+  .status-label {
+    font-size: 22px;
+    font-weight: 700;
+    color: #111827;
   }
 
-  /* ── Status badge ─────────────────────────────────────── */
-  .status-badge {
+  .status-meta {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .meta-item .meta-key {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    color: #9ca3af;
+  }
+  .meta-item .meta-val {
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+    font-family: 'Courier New', monospace;
+  }
+
+  /* ── Divider ────────────────────────────────────────────────────── */
+  .bc-divider { border: none; border-top: 1px solid #f3f4f6; margin: 20px 0; }
+
+  /* ── Action row ─────────────────────────────────────────────────── */
+  .action-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  /* ── TOTP field ─────────────────────────────────────────────────── */
+  .totp-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .totp-group label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    color: #6b7280;
+  }
+  .totp-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .totp-input-wrap .totp-icon {
+    position: absolute;
+    left: 12px;
+    font-size: 14px;
+    pointer-events: none;
+  }
+  .totp-input {
+    padding: 10px 14px 10px 36px;
+    border: 1.5px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 18px;
+    letter-spacing: 6px;
+    font-family: 'Courier New', monospace;
+    font-weight: 700;
+    width: 160px;
+    color: #111827;
+    background: #f9fafb;
+    transition: border-color .15s, box-shadow .15s;
+    text-align: center;
+  }
+  .totp-input:focus {
+    outline: none;
+    border-color: #417690;
+    box-shadow: 0 0 0 3px rgba(65,118,144,.15);
+    background: #fff;
+  }
+  .totp-input::placeholder { color: #d1d5db; letter-spacing: 3px; font-size: 14px; }
+
+  /* ── Buttons ────────────────────────────────────────────────────── */
+  .btn {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    font-size: 15px;
-    font-weight: 600;
+    padding: 10px 22px;
+    border-radius: 8px;
+    border: none;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .15s;
+    white-space: nowrap;
+    text-decoration: none;
   }
-  .status-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    display: inline-block;
+  .btn:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+    pointer-events: none;
   }
-  .status-dot.running  { background: #28a745; box-shadow: 0 0 0 3px rgba(40,167,69,.2); animation: pulse 1.5s infinite; }
-  .status-dot.stopped  { background: #dc3545; }
-  @keyframes pulse {
-    0%   { box-shadow: 0 0 0 0   rgba(40,167,69,.4); }
-    70%  { box-shadow: 0 0 0 8px rgba(40,167,69,0);  }
-    100% { box-shadow: 0 0 0 0   rgba(40,167,69,0);  }
+  .btn-green {
+    background: #16a34a;
+    color: #fff;
+    box-shadow: 0 1px 3px rgba(22,163,74,.3);
   }
+  .btn-green:hover { background: #15803d; box-shadow: 0 2px 6px rgba(22,163,74,.35); }
 
-  /* ── Meta info ────────────────────────────────────────── */
-  .bc-meta {
-    display: flex;
-    gap: 32px;
-    margin: 12px 0 20px;
-    font-size: 13px;
-    color: #555;
+  .btn-red {
+    background: #dc2626;
+    color: #fff;
+    box-shadow: 0 1px 3px rgba(220,38,38,.3);
   }
-  .bc-meta span strong { color: #222; }
+  .btn-red:hover { background: #b91c1c; box-shadow: 0 2px 6px rgba(220,38,38,.35); }
 
-  /* ── Buttons ──────────────────────────────────────────── */
-  .bc-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-
-  .btn-start {
-    background: #28a745; color: #fff; border: none;
-    padding: 9px 22px; border-radius: 4px; font-size: 14px;
-    font-weight: 600; cursor: pointer; display: inline-flex;
-    align-items: center; gap: 6px;
+  .btn-ghost {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #e5e7eb;
   }
-  .btn-start:hover { background: #218838; }
-  .btn-start:disabled { background: #6c757d; cursor: not-allowed; }
+  .btn-ghost:hover { background: #e5e7eb; }
 
-  .btn-stop {
-    background: #dc3545; color: #fff; border: none;
-    padding: 9px 22px; border-radius: 4px; font-size: 14px;
-    font-weight: 600; cursor: pointer; display: inline-flex;
-    align-items: center; gap: 6px;
-  }
-  .btn-stop:hover { background: #c82333; }
-  .btn-stop:disabled { background: #6c757d; cursor: not-allowed; }
+  .btn-sm { padding: 6px 14px; font-size: 12px; border-radius: 6px; }
 
-  /* ── TOTP input ───────────────────────────────────────── */
-  #totp-section {
-    display: flex; align-items: center; gap: 8px;
-    background: #fff3cd; border: 1px solid #ffc107;
-    border-radius: 4px; padding: 10px 14px;
-    font-size: 13px;
-  }
-  #totp-section label { font-weight: 600; white-space: nowrap; }
-  #totp-section input {
-    width: 110px; padding: 6px 10px; border: 1px solid #ccc;
-    border-radius: 4px; font-size: 15px; letter-spacing: 4px;
-    text-align: center; font-family: monospace;
-  }
-
-  /* ── Log terminal ─────────────────────────────────────── */
+  /* ── Log terminal ───────────────────────────────────────────────── */
   .log-toolbar {
-    display: flex; align-items: center; gap: 10px;
-    margin-bottom: 10px; flex-wrap: wrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
   }
-  .log-toolbar .log-filter-btn {
-    padding: 4px 12px; border-radius: 3px; border: 1px solid #ccc;
-    background: #f8f9fa; font-size: 12px; cursor: pointer;
-    font-weight: 600;
+  .filter-pill {
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1.5px solid #e5e7eb;
+    background: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: .3px;
+    transition: all .15s;
+    color: #6b7280;
   }
-  .log-filter-btn.active { border-color: #417690; background: #417690; color: #fff; }
+  .filter-pill:hover { border-color: #9ca3af; color: #374151; }
+  .filter-pill.active-all     { background: #111827; border-color: #111827; color: #fff; }
+  .filter-pill.active-info    { background: #e0f2fe; border-color: #0ea5e9; color: #0369a1; }
+  .filter-pill.active-warning { background: #fef9c3; border-color: #eab308; color: #713f12; }
+  .filter-pill.active-error   { background: #fee2e2; border-color: #ef4444; color: #991b1b; }
+  .filter-pill.active-debug   { background: #ede9fe; border-color: #8b5cf6; color: #5b21b6; }
 
-  .btn-clear-log {
-    padding: 4px 12px; border-radius: 3px; border: 1px solid #ddd;
-    background: #fff; font-size: 12px; cursor: pointer; margin-left: auto;
+  .log-toolbar-right { margin-left: auto; display: flex; gap: 8px; }
+
+  .sse-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    letter-spacing: .3px;
   }
-  .btn-autoscroll {
-    padding: 4px 12px; border-radius: 3px; border: 1px solid #ddd;
-    background: #fff; font-size: 12px; cursor: pointer;
-  }
-  .btn-autoscroll.on { border-color: #28a745; color: #28a745; font-weight: 600; }
+  .sse-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .sse-chip.live         { background: #dcfce7; color: #16a34a; }
+  .sse-chip.connecting   { background: #fef9c3; color: #ca8a04; }
+  .sse-chip.disconnected { background: #fee2e2; color: #dc2626; }
 
   #log-box {
-    background: #1e1e1e;
-    color: #d4d4d4;
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 12.5px;
-    line-height: 1.6;
-    padding: 14px 16px;
-    border-radius: 5px;
-    height: 520px;
+    background: #0f1117;
+    color: #c9d1d9;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.65;
+    padding: 16px 18px;
+    border-radius: 8px;
+    height: 500px;
     overflow-y: auto;
-    white-space: pre-wrap;
-    word-break: break-all;
+    margin-top: 14px;
   }
-  #log-box::-webkit-scrollbar { width: 6px; }
-  #log-box::-webkit-scrollbar-track { background: #2d2d2d; }
-  #log-box::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
+  #log-box::-webkit-scrollbar { width: 5px; }
+  #log-box::-webkit-scrollbar-track { background: transparent; }
+  #log-box::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
 
-  .log-line { display: block; padding: 1px 0; }
-  .log-line.info    { color: #d4d4d4; }
-  .log-line.warning { color: #f0c040; }
-  .log-line.error   { color: #f47070; }
-  .log-line.debug   { color: #7ec8e3; }
-  .log-line.hidden  { display: none; }
+  .log-line { display: flex; gap: 10px; padding: 1.5px 0; }
+  .log-line.hidden { display: none; }
+  .log-ts   { color: #484f58; flex-shrink: 0; user-select: none; }
+  .log-lvl  { flex-shrink: 0; font-weight: 700; min-width: 52px; }
+  .log-msg  { word-break: break-word; }
 
-  /* ── SSE status chip ──────────────────────────────────── */
-  #sse-status {
-    font-size: 11px; padding: 2px 8px; border-radius: 10px;
-    font-weight: 600;
+  .log-line.info    .log-lvl { color: #58a6ff; }
+  .log-line.warning .log-lvl { color: #e3b341; }
+  .log-line.warning .log-msg { color: #e3b341; }
+  .log-line.error   .log-lvl { color: #f85149; }
+  .log-line.error   .log-msg { color: #f85149; }
+  .log-line.debug   .log-lvl { color: #7ee787; }
+  .log-line.debug   .log-msg { color: #484f58; }
+
+  .log-empty {
+    color: #484f58;
+    font-style: italic;
+    text-align: center;
+    margin-top: 60px;
+    font-size: 13px;
   }
-  #sse-status.connected    { background: #d4edda; color: #155724; }
-  #sse-status.connecting   { background: #fff3cd; color: #856404; }
-  #sse-status.disconnected { background: #f8d7da; color: #721c24; }
+
+  /* ── Alert banner ───────────────────────────────────────────────── */
+  .bc-alert {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 18px;
+    border-radius: 8px;
+    margin-bottom: 18px;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .bc-alert.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+  .bc-alert.warning { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+  .bc-alert.error   { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+  .bc-alert.info    { background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; }
 </style>
 
-<h1>🤖 Bot Control</h1>
+<div class="bc-page">
+  <h1 style="font-size:22px;font-weight:700;color:#111827;margin:0 0 20px;">🤖 Bot Control</h1>
 
-{% if messages %}
+  <!-- Alerts -->
   {% for msg in messages %}
-    <div class="alert" style="padding:10px 16px;border-radius:4px;margin-bottom:16px;
-      background:{% if msg.tags == 'error' %}#f8d7da{% elif msg.tags == 'warning' %}#fff3cd{% else %}#d4edda{% endif %};
-      color:{% if msg.tags == 'error' %}#721c24{% elif msg.tags == 'warning' %}#856404{% else %}#155724{% endif %}">
-      {{ msg }}
-    </div>
+  <div class="bc-alert {% if msg.tags == 'error' %}error{% elif msg.tags == 'warning' %}warning{% elif msg.tags == 'success' %}success{% else %}info{% endif %}">
+    {% if msg.tags == 'success' %}✅{% elif msg.tags == 'error' %}❌{% elif msg.tags == 'warning' %}⚠️{% else %}ℹ️{% endif %}
+    {{ msg }}
+  </div>
   {% endfor %}
-{% endif %}
 
-<!-- ── Status & Controls ──────────────────────────────────────────────── -->
-<div class="bc-card">
-  <h2>Status</h2>
+  <!-- ── Status Card ──────────────────────────────────────────────── -->
+  <div class="bc-card">
+    <div class="bc-card-header">
+      <h2>Status</h2>
+      <span class="sse-chip connecting" id="sse-chip">
+        <span class="dot"></span>
+        <span id="sse-text">connecting</span>
+      </span>
+    </div>
+    <div class="bc-card-body">
 
-  <div class="status-badge" id="status-badge">
-    <span class="status-dot {% if ctrl.is_running %}running{% else %}stopped{% endif %}" id="status-dot"></span>
-    <span id="status-text">{% if ctrl.is_running %}Running{% else %}Stopped{% endif %}</span>
-  </div>
+      <div class="status-row">
+        <div class="status-indicator">
+          <span class="status-dot {% if ctrl.is_running %}running{% else %}stopped{% endif %}" id="status-dot"></span>
+          <span class="status-label" id="status-label">{% if ctrl.is_running %}Running{% else %}Stopped{% endif %}</span>
+        </div>
 
-  <div class="bc-meta">
-    <span><strong>PID:</strong> <span id="meta-pid">{{ ctrl.pid|default:"—" }}</span></span>
-    <span><strong>Started:</strong> <span id="meta-started">{{ ctrl.started_at|default:"—" }}</span></span>
-    <span><strong>Stopped:</strong> <span id="meta-stopped">{{ ctrl.stopped_at|default:"—" }}</span></span>
-  </div>
-
-  <div class="bc-actions">
-
-    <!-- START form -->
-    <form method="post" action="{% url 'bot:start' %}" id="start-form">
-      {% csrf_token %}
-      {% if not has_totp_secret %}
-      <div id="totp-section">
-        <label for="totp_code">🔐 TOTP Code:</label>
-        <input type="text" name="totp_code" id="totp_code"
-               maxlength="6" placeholder="123456"
-               autocomplete="one-time-code" inputmode="numeric">
+        <div class="status-meta">
+          <div class="meta-item">
+            <span class="meta-key">PID</span>
+            <span class="meta-val" id="meta-pid">{{ ctrl.pid|default:"—" }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-key">Started</span>
+            <span class="meta-val" id="meta-started">{{ ctrl.started_at|default:"—" }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-key">Stopped</span>
+            <span class="meta-val" id="meta-stopped">{{ ctrl.stopped_at|default:"—" }}</span>
+          </div>
+        </div>
       </div>
-      {% endif %}
-      <button type="submit" class="btn-start"
-              {% if ctrl.is_running %}disabled{% endif %}
-              id="btn-start">
-        ▶ Start Bot
-      </button>
-    </form>
 
-    <!-- STOP form -->
-    <form method="post" action="{% url 'bot:stop' %}">
-      {% csrf_token %}
-      <button type="submit" class="btn-stop"
-              {% if not ctrl.is_running %}disabled{% endif %}
-              id="btn-stop"
-              onclick="return confirm('Stop the running bot?')">
-        ■ Stop Bot
-      </button>
-    </form>
+      <hr class="bc-divider">
 
+      <div class="action-row">
+
+        {% if not has_totp_secret %}
+        <div class="totp-group">
+          <label for="totp_code">App Code</label>
+          <div class="totp-input-wrap">
+            <span class="totp-icon">🔐</span>
+            <input type="text" id="totp_code" name="totp_code"
+                   class="totp-input"
+                   maxlength="6" placeholder="······"
+                   autocomplete="one-time-code" inputmode="numeric"
+                   pattern="[0-9]{6}">
+          </div>
+        </div>
+        {% endif %}
+
+        <form method="post" action="{% url 'bot:start' %}" id="start-form" style="display:contents">
+          {% csrf_token %}
+          {% if not has_totp_secret %}
+          <input type="hidden" name="totp_code" id="totp_hidden">
+          {% endif %}
+          <button type="submit" class="btn btn-green" id="btn-start"
+                  {% if ctrl.is_running %}disabled{% endif %}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            Start Bot
+          </button>
+        </form>
+
+        <form method="post" action="{% url 'bot:stop' %}" style="display:contents">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-red" id="btn-stop"
+                  {% if not ctrl.is_running %}disabled{% endif %}
+                  onclick="return confirm('Send stop signal to the running bot?')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16"/></svg>
+            Stop Bot
+          </button>
+        </form>
+
+      </div>
+    </div>
   </div>
-</div>
 
-<!-- ── Live Log Viewer ────────────────────────────────────────────────── -->
-<div class="bc-card">
-  <h2>
-    Live Logs
-    <span id="sse-status" class="connecting" style="margin-left:10px;">connecting…</span>
-    <span style="font-size:12px;color:#888;font-weight:400;margin-left:12px;">
-      {{ log_file }}
-    </span>
-  </h2>
+  <!-- ── Live Log Card ────────────────────────────────────────────── -->
+  <div class="bc-card">
+    <div class="bc-card-header">
+      <h2>Live Logs</h2>
+      <span style="font-size:11px;color:#9ca3af;font-weight:400;">{{ log_file }}</span>
+    </div>
+    <div class="bc-card-body" style="padding-bottom:18px;">
 
-  <div class="log-toolbar">
-    <button class="log-filter-btn active" data-level="all"     onclick="setFilter('all',this)">All</button>
-    <button class="log-filter-btn"        data-level="info"    onclick="setFilter('info',this)">INFO</button>
-    <button class="log-filter-btn"        data-level="warning" onclick="setFilter('warning',this)" style="color:#856404">WARN</button>
-    <button class="log-filter-btn"        data-level="error"   onclick="setFilter('error',this)"   style="color:#721c24">ERROR</button>
-    <button class="log-filter-btn"        data-level="debug"   onclick="setFilter('debug',this)"   style="color:#0c5460">DEBUG</button>
+      <div class="log-toolbar">
+        <button class="filter-pill active-all" onclick="setFilter('all',this)">All</button>
+        <button class="filter-pill" onclick="setFilter('info',this)">INFO</button>
+        <button class="filter-pill" onclick="setFilter('warning',this)">WARN</button>
+        <button class="filter-pill" onclick="setFilter('error',this)">ERROR</button>
+        <button class="filter-pill" onclick="setFilter('debug',this)">DEBUG</button>
 
-    <button class="btn-autoscroll on" id="btn-autoscroll" onclick="toggleAutoscroll()">
-      ↓ Auto-scroll ON
-    </button>
-    <button class="btn-clear-log" onclick="clearLog()">🗑 Clear</button>
+        <div class="log-toolbar-right">
+          <button class="btn btn-ghost btn-sm" id="btn-scroll" onclick="toggleAutoScroll()">↓ Auto-scroll</button>
+          <button class="btn btn-ghost btn-sm" onclick="clearLog()">🗑 Clear</button>
+        </div>
+      </div>
+
+      <div id="log-box">
+        <div class="log-empty" id="log-empty">Waiting for log lines…</div>
+      </div>
+
+    </div>
   </div>
 
-  <div id="log-box"></div>
-</div>
+</div><!-- .bc-page -->
 
 <script>
-// ── State ────────────────────────────────────────────────────────────────
-let autoScroll   = true;
-let activeFilter = "all";
-let evtSource    = null;
-const MAX_LINES  = 1000;   // keep at most this many lines in the DOM
+// ── Config ───────────────────────────────────────────────────────────────
+const MAX_LINES    = 1200;
+let   autoScroll   = true;
+let   activeFilter = "all";
+let   evtSource    = null;
+let   lineCount    = 0;
 
-// ── Log box helpers ──────────────────────────────────────────────────────
-const logBox = document.getElementById("log-box");
+// ── TOTP sync ────────────────────────────────────────────────────────────
+const totpVisible = document.getElementById("totp_code");
+const totpHidden  = document.getElementById("totp_hidden");
+const startForm   = document.getElementById("start-form");
 
-function detectLevel(line) {
-  if (/\[ERROR\s*\]/.test(line) || /\bERROR\b/.test(line))   return "error";
-  if (/\[WARNING\s*\]/.test(line) || /\bWARNING\b/.test(line)) return "warning";
-  if (/\[DEBUG\s*\]/.test(line) || /\bDEBUG\b/.test(line))   return "debug";
-  return "info";
+if (totpVisible && totpHidden && startForm) {
+  startForm.addEventListener("submit", e => {
+    totpHidden.value = totpVisible.value.trim();
+    if (!totpHidden.value || totpHidden.value.length < 6) {
+      e.preventDefault();
+      totpVisible.style.borderColor = "#ef4444";
+      totpVisible.style.boxShadow   = "0 0 0 3px rgba(239,68,68,.2)";
+      totpVisible.focus();
+    }
+  });
+  totpVisible.addEventListener("input", () => {
+    totpVisible.style.borderColor = "";
+    totpVisible.style.boxShadow   = "";
+  });
 }
 
-function appendLine(text) {
-  const level = detectLevel(text);
-  const span  = document.createElement("span");
-  span.className = `log-line ${level}`;
-  span.dataset.level = level;
-  span.textContent = text;
+// ── Log rendering ────────────────────────────────────────────────────────
+const logBox   = document.getElementById("log-box");
+const logEmpty = document.getElementById("log-empty");
+
+const LEVEL_RE = /\[(INFO|WARNING|ERROR|DEBUG)\s*\]/;
+
+function parseLine(raw) {
+  // Format: "2024-01-15 09:15:00 [INFO    ] TradingApp: message"
+  const m = raw.match(/^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s+\[(\w+)\s*\]\s+(.*)$/);
+  if (m) return { ts: m[1], level: m[2].toLowerCase(), msg: m[3] };
+  // fallback — no structured parse
+  const lv = LEVEL_RE.exec(raw);
+  return { ts: "", level: lv ? lv[1].toLowerCase() : "info", msg: raw };
+}
+
+function appendLine(raw) {
+  if (!raw.trim()) return;
+
+  if (logEmpty) logEmpty.remove();
+
+  const { ts, level, msg } = parseLine(raw);
+
+  const row = document.createElement("div");
+  row.className = `log-line ${level}`;
+  row.dataset.level = level;
+
+  if (ts) {
+    const tsEl = document.createElement("span");
+    tsEl.className = "log-ts";
+    tsEl.textContent = ts;
+    row.appendChild(tsEl);
+  }
+
+  const lvEl = document.createElement("span");
+  lvEl.className = "log-lvl";
+  lvEl.textContent = `[${level.toUpperCase()}]`;
+  row.appendChild(lvEl);
+
+  const msgEl = document.createElement("span");
+  msgEl.className = "log-msg";
+  msgEl.textContent = msg;
+  row.appendChild(msgEl);
 
   if (activeFilter !== "all" && activeFilter !== level) {
-    span.classList.add("hidden");
+    row.classList.add("hidden");
   }
 
-  logBox.appendChild(span);
+  logBox.appendChild(row);
+  lineCount++;
 
-  // Trim old lines to prevent unbounded growth
-  while (logBox.childElementCount > MAX_LINES) {
+  // Prune oldest lines
+  while (lineCount > MAX_LINES) {
     logBox.removeChild(logBox.firstChild);
+    lineCount--;
   }
 
-  if (autoScroll) {
-    logBox.scrollTop = logBox.scrollHeight;
-  }
+  if (autoScroll) logBox.scrollTop = logBox.scrollHeight;
 }
 
 // ── Filter ───────────────────────────────────────────────────────────────
 function setFilter(level, btn) {
   activeFilter = level;
-  document.querySelectorAll(".log-filter-btn").forEach(b => b.classList.remove("active"));
-  btn.classList.add("active");
+  const prefix = "active-";
+
+  document.querySelectorAll(".filter-pill").forEach(b => {
+    b.className = "filter-pill";
+  });
+  btn.className = `filter-pill ${prefix}${level}`;
 
   document.querySelectorAll(".log-line").forEach(el => {
-    if (level === "all" || el.dataset.level === level) {
-      el.classList.remove("hidden");
-    } else {
-      el.classList.add("hidden");
-    }
+    el.classList.toggle("hidden", level !== "all" && el.dataset.level !== level);
   });
 
   if (autoScroll) logBox.scrollTop = logBox.scrollHeight;
 }
 
 // ── Auto-scroll ──────────────────────────────────────────────────────────
-function toggleAutoscroll() {
-  autoScroll = !autoScroll;
-  const btn = document.getElementById("btn-autoscroll");
-  btn.textContent = autoScroll ? "↓ Auto-scroll ON" : "↓ Auto-scroll OFF";
-  btn.classList.toggle("on", autoScroll);
+const scrollBtn = document.getElementById("btn-scroll");
+
+function setAutoScroll(val) {
+  autoScroll = val;
+  scrollBtn.textContent = autoScroll ? "↓ Auto-scroll" : "⏸ Paused";
+  scrollBtn.style.color = autoScroll ? "" : "#f59e0b";
+  scrollBtn.style.borderColor = autoScroll ? "" : "#f59e0b";
+  if (autoScroll) logBox.scrollTop = logBox.scrollHeight;
 }
+
+function toggleAutoScroll() { setAutoScroll(!autoScroll); }
 
 logBox.addEventListener("scroll", () => {
-  // User scrolled up manually — disable auto-scroll
-  const atBottom = logBox.scrollHeight - logBox.scrollTop - logBox.clientHeight < 30;
-  if (!atBottom && autoScroll) toggleAutoscroll();
+  const atBottom = logBox.scrollHeight - logBox.scrollTop - logBox.clientHeight < 40;
+  if (!atBottom && autoScroll) setAutoScroll(false);
 });
 
-// ── Clear ────────────────────────────────────────────────────────────────
 function clearLog() {
   logBox.innerHTML = "";
+  lineCount = 0;
 }
 
-// ── SSE connection ───────────────────────────────────────────────────────
+// ── SSE ──────────────────────────────────────────────────────────────────
+const sseChip = document.getElementById("sse-chip");
+const sseText = document.getElementById("sse-text");
+
+function setSseStatus(state) {
+  sseChip.className = `sse-chip ${state}`;
+  sseText.textContent = { live: "live", connecting: "connecting", disconnected: "reconnecting" }[state] || state;
+}
+
 function connectSSE() {
-  const sseStatus = document.getElementById("sse-status");
-
   if (evtSource) evtSource.close();
-
-  sseStatus.textContent  = "connecting…";
-  sseStatus.className    = "connecting";
+  setSseStatus("connecting");
 
   evtSource = new EventSource("{% url 'bot:log_stream' %}");
-
-  evtSource.onopen = () => {
-    sseStatus.textContent = "● live";
-    sseStatus.className   = "connected";
-  };
-
-  evtSource.onmessage = (e) => {
-    if (e.data) appendLine(e.data);
-  };
-
-  evtSource.onerror = () => {
-    sseStatus.textContent = "disconnected — retrying…";
-    sseStatus.className   = "disconnected";
-    // Browser automatically retries SSE; we just update the chip
-  };
+  evtSource.onopen    = () => setSseStatus("live");
+  evtSource.onmessage = e => { if (e.data) appendLine(e.data); };
+  evtSource.onerror   = () => setSseStatus("disconnected");
 }
 
-// ── Status polling (every 5 s) ───────────────────────────────────────────
+// ── Status polling ───────────────────────────────────────────────────────
+const statusDot   = document.getElementById("status-dot");
+const statusLabel = document.getElementById("status-label");
+const btnStart    = document.getElementById("btn-start");
+const btnStop     = document.getElementById("btn-stop");
+
 function pollStatus() {
   fetch("{% url 'bot:status' %}")
     .then(r => r.json())
-    .then(data => {
-      const dot     = document.getElementById("status-dot");
-      const text    = document.getElementById("status-text");
-      const btnStart = document.getElementById("btn-start");
-      const btnStop  = document.getElementById("btn-stop");
-
-      if (data.running) {
-        dot.className    = "status-dot running";
-        text.textContent = "Running";
-        btnStart.disabled = true;
-        btnStop.disabled  = false;
-      } else {
-        dot.className    = "status-dot stopped";
-        text.textContent = "Stopped";
-        btnStart.disabled = false;
-        btnStop.disabled  = true;
-      }
-
-      document.getElementById("meta-pid").textContent     = data.pid || "—";
-      document.getElementById("meta-started").textContent = data.started_at || "—";
-      document.getElementById("meta-stopped").textContent = data.stopped_at || "—";
-    })
-    .catch(() => {});
+    .then(d => {
+      statusDot.className = `status-dot ${d.running ? "running" : "stopped"}`;
+      statusLabel.textContent = d.running ? "Running" : "Stopped";
+      if (btnStart) btnStart.disabled = d.running;
+      if (btnStop)  btnStop.disabled  = !d.running;
+      document.getElementById("meta-pid").textContent     = d.pid        || "—";
+      document.getElementById("meta-started").textContent = d.started_at || "—";
+      document.getElementById("meta-stopped").textContent = d.stopped_at || "—";
+    }).catch(() => {});
 }
 
-// ── Init ─────────────────────────────────────────────────────────────────
+// ── Boot ─────────────────────────────────────────────────────────────────
 connectSSE();
 setInterval(pollStatus, 5000);
 </script>
