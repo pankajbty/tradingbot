@@ -10,7 +10,8 @@ _OMS = "https://kite.zerodha.com/oms"
 
 
 class Trader:
-    def __init__(self):
+    def __init__(self, credentials: dict = None):
+        self._credentials = credentials if credentials is not None else ZERODHA_CONFIG
         self.kite = self._login()
         self._session = self.kite.reqsession   # authenticated requests.Session
 
@@ -19,8 +20,8 @@ class Trader:
     # ------------------------------------------------------------------
 
     def _login(self) -> Zerodha:
-        user_id  = ZERODHA_CONFIG["user_id"]
-        password = ZERODHA_CONFIG["password"]
+        user_id  = self._credentials["user_id"]
+        password = self._credentials["password"]
 
         if not user_id or not password:
             raise ValueError(

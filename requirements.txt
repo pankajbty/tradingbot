@@ -2,3 +2,4 @@ jugaad-trader>=0.2.5
 schedule>=1.2.0
 pandas>=2.0.0
 python-dotenv>=1.0.0
+django>=4.2

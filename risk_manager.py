@@ -6,8 +6,9 @@ logger = logging.getLogger("TradingApp.RiskManager")
 
 
 class RiskManager:
-    def __init__(self, trader):
+    def __init__(self, trader, config: dict = None):
         self.trader = trader
+        self._config = config if config is not None else RISK_CONFIG
         self.daily_pnl: float = 0.0
         # symbol -> {side, entry_price, sl_price, target_price, sl_order_id, quantity}
         self._active_trades: dict[str, dict] = {}
@@ -24,7 +25,7 @@ class RiskManager:
 
         positions = self.trader.get_positions()
         open_count = sum(1 for p in positions if p["quantity"] != 0)
-        if open_count >= RISK_CONFIG["max_open_positions"]:
+        if open_count >= self._config["max_open_positions"]:
             logger.warning(f"Max open positions reached ({open_count}).")
             return False
 
@@ -41,8 +42,8 @@ class RiskManager:
         entry_price: float,
         quantity: int,
     ):
-        sl_pct  = RISK_CONFIG["stop_loss_pct"]  / 100
-        tgt_pct = RISK_CONFIG["target_pct"] / 100
+        sl_pct  = self._config["stop_loss_pct"]  / 100
+        tgt_pct = self._config["target_pct"] / 100
 
         if side == "BUY":
             sl_price     = entry_price * (1 - sl_pct)
@@ -116,7 +117,7 @@ class RiskManager:
         positions = self.trader.get_positions()
         self.daily_pnl = sum(p.get("pnl", 0) for p in positions)
 
-        if self.daily_pnl <= -RISK_CONFIG["max_daily_loss"]:
+        if self.daily_pnl <= -self._config["max_daily_loss"]:
             logger.warning(
                 f"Daily loss limit hit: ₹{abs(self.daily_pnl):.2f}. Halting new trades."
             )

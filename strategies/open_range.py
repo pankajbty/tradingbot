@@ -12,11 +12,12 @@ _MARKET_OPEN = dtime(9, 15)
 class OpenRangeBreakoutStrategy(BaseStrategy):
     name = "open_range_breakout"
 
-    def __init__(self, trader, market_data, risk_manager):
+    def __init__(self, trader, market_data, risk_manager, config: dict = None):
         super().__init__(trader, market_data, risk_manager)
-        self._ranges:    dict[str, dict]  = {}   # symbol -> {high, low}
-        self._range_set: dict[str, bool]  = {}
-        self._traded:    dict[str, bool]  = {}   # one trade per stock per day
+        self._config     = config if config is not None else OPEN_RANGE_CONFIG
+        self._ranges:    dict[str, dict] = {}   # symbol -> {high, low}
+        self._range_set: dict[str, bool] = {}
+        self._traded:    dict[str, bool] = {}   # one trade per stock per day
 
     # ------------------------------------------------------------------
 
@@ -24,7 +25,7 @@ class OpenRangeBreakoutStrategy(BaseStrategy):
         """Compute the opening-range high/low from intraday 1-min candles."""
         candles    = self.market_data.get_historical_candles(symbol, interval="minute", lookback_days=1)
         today      = datetime.now().date()
-        range_mins = OPEN_RANGE_CONFIG["opening_range_minutes"]
+        range_mins = self._config["opening_range_minutes"]
         cutoff_min = 9 * 60 + 15 + range_mins  # minutes since midnight
 
         today_candles = [
@@ -47,9 +48,9 @@ class OpenRangeBreakoutStrategy(BaseStrategy):
 
     def run(self):
         now       = datetime.now().time()
-        range_end = dtime(9, 15 + OPEN_RANGE_CONFIG["opening_range_minutes"])
+        range_end = dtime(9, 15 + self._config["opening_range_minutes"])
 
-        for symbol in OPEN_RANGE_CONFIG["stocks"]:
+        for symbol in self._config["stocks"]:
             # Build the opening range once it's complete
             if not self._range_set.get(symbol):
                 if now < range_end:
@@ -70,7 +71,7 @@ class OpenRangeBreakoutStrategy(BaseStrategy):
                 continue
 
             r   = self._ranges[symbol]
-            qty = OPEN_RANGE_CONFIG["quantity_per_stock"]
+            qty = self._config["quantity_per_stock"]
 
             if ltp > r["high"]:
                 logger.info(
@@ -82,12 +83,12 @@ class OpenRangeBreakoutStrategy(BaseStrategy):
                     self._traded[symbol] = True
 
             elif ltp < r["low"]:
-                if not OPEN_RANGE_CONFIG.get("allow_short", False):
+                if not self._config.get("allow_short", False):
                     logger.info(
                         f"[OpenRange] Breakdown detected for {symbol} but short selling is disabled. "
-                        f"Set allow_short=True in config.py to enable."
+                        f"Set allow_short=True in config or admin UI to enable."
                     )
-                    self._traded[symbol] = True   # skip for today, don't keep re-checking
+                    self._traded[symbol] = True   # skip for today
                     continue
                 logger.info(
                     f"[OpenRange] SELL breakdown: {symbol} LTP={ltp:.2f} < range_low={r['low']:.2f}"

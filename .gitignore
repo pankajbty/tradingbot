@@ -2,6 +2,9 @@
 .env
 .env.*
 
+# Django database (contains Zerodha credentials stored via admin UI)
+db.sqlite3
+
 # Python
 __pycache__/
 *.py[cod]

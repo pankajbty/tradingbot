@@ -25,10 +25,27 @@ def _is_market_hours() -> bool:
 
 
 class TradingScheduler:
-    def __init__(self, strategies: dict, risk_manager, market_data):
+    def __init__(
+        self,
+        strategies: dict,
+        risk_manager,
+        market_data,
+        # Optional config dicts — used by runbot management command so DB config
+        # flows through. Falls back to config.py constants when called from main.py.
+        fixed_buy_config: dict = None,
+        ma_config:        dict = None,
+        or_config:        dict = None,
+        bollinger_config: dict = None,
+        risk_config:      dict = None,
+    ):
         self.strategies   = strategies
         self.risk_manager = risk_manager
         self.market_data  = market_data
+        self._fb   = fixed_buy_config  or FIXED_BUY_CONFIG
+        self._ma   = ma_config         or MA_CROSSOVER_CONFIG
+        self._or   = or_config         or OPEN_RANGE_CONFIG
+        self._bb   = bollinger_config  or BOLLINGER_CONFIG
+        self._risk = risk_config       or RISK_CONFIG
 
     # ------------------------------------------------------------------
     # Setup
@@ -36,26 +53,26 @@ class TradingScheduler:
 
     def setup(self):
         # Fixed Buy — once at configured time
-        if "fixed_buy" in self.strategies and "fixed_buy" in ENABLED_STRATEGIES:
-            exec_time = FIXED_BUY_CONFIG.get("execute_at", "09:16")
+        if "fixed_buy" in self.strategies:
+            exec_time = self._fb.get("execute_at", "09:21")
             schedule.every().day.at(exec_time).do(self._run, "fixed_buy")
             logger.info(f"Fixed buy scheduled at {exec_time}")
 
         # MA Crossover — every N minutes during market hours
-        if "ma_crossover" in self.strategies and "ma_crossover" in ENABLED_STRATEGIES:
-            interval = MA_CROSSOVER_CONFIG.get("check_interval_minutes", 5)
+        if "ma_crossover" in self.strategies:
+            interval = self._ma.get("check_interval_minutes", 5)
             schedule.every(interval).minutes.do(self._run_if_market, "ma_crossover")
             logger.info(f"MA crossover every {interval} min")
 
-        # Open Range Breakout — every 1 minute during market hours
-        if "open_range_breakout" in self.strategies and "open_range_breakout" in ENABLED_STRATEGIES:
-            interval = OPEN_RANGE_CONFIG.get("check_interval_minutes", 1)
+        # Open Range Breakout — every N minutes during market hours
+        if "open_range_breakout" in self.strategies:
+            interval = self._or.get("check_interval_minutes", 1)
             schedule.every(interval).minutes.do(self._run_if_market, "open_range_breakout")
             logger.info(f"Open range breakout every {interval} min")
 
         # Bollinger Band — every N minutes during market hours
-        if "bollinger" in self.strategies and "bollinger" in ENABLED_STRATEGIES:
-            interval = BOLLINGER_CONFIG.get("check_interval_minutes", 5)
+        if "bollinger" in self.strategies:
+            interval = self._bb.get("check_interval_minutes", 5)
             schedule.every(interval).minutes.do(self._run_if_market, "bollinger")
             logger.info(f"Bollinger Band every {interval} min")
 
@@ -63,7 +80,7 @@ class TradingScheduler:
         schedule.every(1).minutes.do(self._risk_check)
 
         # Auto square-off
-        squareoff_time = RISK_CONFIG.get("auto_squareoff_time", "15:15")
+        squareoff_time = self._risk.get("auto_squareoff_time", "15:15")
         schedule.every().day.at(squareoff_time).do(self._squareoff)
         logger.info(f"Auto square-off scheduled at {squareoff_time}")
 

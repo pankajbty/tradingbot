@@ -11,14 +11,18 @@ logger = logging.getLogger("TradingApp.Strategy.MACrossover")
 class MACrossoverStrategy(BaseStrategy):
     name = "ma_crossover"
 
+    def __init__(self, trader, market_data, risk_manager, config: dict = None):
+        super().__init__(trader, market_data, risk_manager)
+        self._config = config if config is not None else MA_CROSSOVER_CONFIG
+
     def _get_signal(self, symbol: str) -> str | None:
         """Return 'BUY', 'SELL', or None based on EMA crossover."""
-        fast_p = MA_CROSSOVER_CONFIG["fast_period"]
-        slow_p = MA_CROSSOVER_CONFIG["slow_period"]
+        fast_p = self._config["fast_period"]
+        slow_p = self._config["slow_period"]
 
         candles = self.market_data.get_historical_candles(
             symbol,
-            interval=MA_CROSSOVER_CONFIG["candle_interval"],
+            interval=self._config["candle_interval"],
             lookback_days=5,
         )
         # Need at least slow_period + 1 candles to detect a crossover
@@ -40,7 +44,7 @@ class MACrossoverStrategy(BaseStrategy):
         return None
 
     def run(self):
-        for symbol in MA_CROSSOVER_CONFIG["stocks"]:
+        for symbol in self._config["stocks"]:
             signal = self._get_signal(symbol)
             if signal is None:
                 continue
@@ -49,7 +53,7 @@ class MACrossoverStrategy(BaseStrategy):
                 logger.info("MACrossover: risk gate closed, stopping.")
                 break
 
-            qty = MA_CROSSOVER_CONFIG["quantity_per_stock"]
+            qty = self._config["quantity_per_stock"]
             logger.info(f"[MACrossover] Signal {signal} for {symbol}")
 
             # Exit any existing opposite position first

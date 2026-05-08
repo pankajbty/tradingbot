@@ -25,8 +25,9 @@ class BollingerBandStrategy(BaseStrategy):
 
     name = "bollinger"
 
-    def __init__(self, trader, market_data, risk_manager):
+    def __init__(self, trader, market_data, risk_manager, config: dict = None):
         super().__init__(trader, market_data, risk_manager)
+        self._config = config if config is not None else BOLLINGER_CONFIG
         self._traded: dict[str, bool] = {}
 
     # ------------------------------------------------------------------
@@ -39,12 +40,12 @@ class BollingerBandStrategy(BaseStrategy):
         prev_middle, prev_lower, current_close, prev_close.
         Returns None if not enough data.
         """
-        period = BOLLINGER_CONFIG["period"]
-        std_mult = BOLLINGER_CONFIG["std_dev"]
+        period   = self._config["period"]
+        std_mult = self._config["std_dev"]
 
         candles = self.market_data.get_historical_candles(
             symbol,
-            interval=BOLLINGER_CONFIG["candle_interval"],
+            interval=self._config["candle_interval"],
             lookback_days=10,
         )
 
@@ -60,11 +61,11 @@ class BollingerBandStrategy(BaseStrategy):
         lower  = sma - std_mult * std
 
         return {
-            "upper":        upper.iloc[-1],
-            "middle":       sma.iloc[-1],
-            "lower":        lower.iloc[-1],
-            "prev_upper":   upper.iloc[-2],
-            "prev_lower":   lower.iloc[-2],
+            "upper":         upper.iloc[-1],
+            "middle":        sma.iloc[-1],
+            "lower":         lower.iloc[-1],
+            "prev_upper":    upper.iloc[-2],
+            "prev_lower":    lower.iloc[-2],
             "current_close": closes.iloc[-1],
             "prev_close":    closes.iloc[-2],
         }
@@ -78,12 +79,12 @@ class BollingerBandStrategy(BaseStrategy):
         if bands is None:
             return None
 
-        prev_close    = bands["prev_close"]
-        curr_close    = bands["current_close"]
-        prev_lower    = bands["prev_lower"]
-        lower         = bands["lower"]
-        prev_upper    = bands["prev_upper"]
-        upper         = bands["upper"]
+        prev_close = bands["prev_close"]
+        curr_close = bands["current_close"]
+        prev_lower = bands["prev_lower"]
+        lower      = bands["lower"]
+        prev_upper = bands["prev_upper"]
+        upper      = bands["upper"]
 
         logger.debug(
             f"[Bollinger] {symbol} | close={curr_close:.2f} "
@@ -95,7 +96,7 @@ class BollingerBandStrategy(BaseStrategy):
             return "BUY"
 
         # SELL (short): price was above upper band, now crossed back below it
-        if BOLLINGER_CONFIG.get("allow_short", False):
+        if self._config.get("allow_short", False):
             if prev_close > prev_upper and curr_close < upper:
                 return "SELL"
 
@@ -106,7 +107,7 @@ class BollingerBandStrategy(BaseStrategy):
     # ------------------------------------------------------------------
 
     def run(self):
-        for symbol in BOLLINGER_CONFIG["stocks"]:
+        for symbol in self._config["stocks"]:
             if self._traded.get(symbol):
                 continue
 
@@ -118,7 +119,7 @@ class BollingerBandStrategy(BaseStrategy):
                 logger.info("Bollinger: risk gate closed, stopping.")
                 break
 
-            qty = BOLLINGER_CONFIG["quantity_per_stock"]
+            qty   = self._config["quantity_per_stock"]
             bands = self._compute_bands(symbol)
             ltp   = bands["current_close"] if bands else 0.0
 

@@ -9,14 +9,18 @@ logger = logging.getLogger("TradingApp.Strategy.FixedBuy")
 class FixedBuyStrategy(BaseStrategy):
     name = "fixed_buy"
 
+    def __init__(self, trader, market_data, risk_manager, config: dict = None):
+        super().__init__(trader, market_data, risk_manager)
+        self._config = config if config is not None else FIXED_BUY_CONFIG
+
     def run(self):
-        for symbol, params in FIXED_BUY_CONFIG["stocks"].items():
+        for symbol, params in self._config["stocks"].items():
             if not self.risk_manager.can_trade():
                 logger.info("FixedBuy: risk gate closed, stopping.")
                 break
 
             qty        = params["quantity"]
-            order_type = FIXED_BUY_CONFIG.get("order_type", "MARKET")
+            order_type = self._config.get("order_type", "MARKET")
 
             logger.info(f"[FixedBuy] BUY {qty} {symbol} @ {order_type}")
             order_id = self.trader.place_order(
