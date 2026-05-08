@@ -1,0 +1,378 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Bot Control — Trading Bot Admin{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Home</a> › Bot Control
+</div>
+{% endblock %}
+
+{% block content %}
+<style>
+  /* ── Control card ─────────────────────────────────────── */
+  .bc-card {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+  }
+  .bc-card h2 {
+    margin: 0 0 16px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+  }
+
+  /* ── Status badge ─────────────────────────────────────── */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .status-dot.running  { background: #28a745; box-shadow: 0 0 0 3px rgba(40,167,69,.2); animation: pulse 1.5s infinite; }
+  .status-dot.stopped  { background: #dc3545; }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0   rgba(40,167,69,.4); }
+    70%  { box-shadow: 0 0 0 8px rgba(40,167,69,0);  }
+    100% { box-shadow: 0 0 0 0   rgba(40,167,69,0);  }
+  }
+
+  /* ── Meta info ────────────────────────────────────────── */
+  .bc-meta {
+    display: flex;
+    gap: 32px;
+    margin: 12px 0 20px;
+    font-size: 13px;
+    color: #555;
+  }
+  .bc-meta span strong { color: #222; }
+
+  /* ── Buttons ──────────────────────────────────────────── */
+  .bc-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+  .btn-start {
+    background: #28a745; color: #fff; border: none;
+    padding: 9px 22px; border-radius: 4px; font-size: 14px;
+    font-weight: 600; cursor: pointer; display: inline-flex;
+    align-items: center; gap: 6px;
+  }
+  .btn-start:hover { background: #218838; }
+  .btn-start:disabled { background: #6c757d; cursor: not-allowed; }
+
+  .btn-stop {
+    background: #dc3545; color: #fff; border: none;
+    padding: 9px 22px; border-radius: 4px; font-size: 14px;
+    font-weight: 600; cursor: pointer; display: inline-flex;
+    align-items: center; gap: 6px;
+  }
+  .btn-stop:hover { background: #c82333; }
+  .btn-stop:disabled { background: #6c757d; cursor: not-allowed; }
+
+  /* ── TOTP input ───────────────────────────────────────── */
+  #totp-section {
+    display: flex; align-items: center; gap: 8px;
+    background: #fff3cd; border: 1px solid #ffc107;
+    border-radius: 4px; padding: 10px 14px;
+    font-size: 13px;
+  }
+  #totp-section label { font-weight: 600; white-space: nowrap; }
+  #totp-section input {
+    width: 110px; padding: 6px 10px; border: 1px solid #ccc;
+    border-radius: 4px; font-size: 15px; letter-spacing: 4px;
+    text-align: center; font-family: monospace;
+  }
+
+  /* ── Log terminal ─────────────────────────────────────── */
+  .log-toolbar {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 10px; flex-wrap: wrap;
+  }
+  .log-toolbar .log-filter-btn {
+    padding: 4px 12px; border-radius: 3px; border: 1px solid #ccc;
+    background: #f8f9fa; font-size: 12px; cursor: pointer;
+    font-weight: 600;
+  }
+  .log-filter-btn.active { border-color: #417690; background: #417690; color: #fff; }
+
+  .btn-clear-log {
+    padding: 4px 12px; border-radius: 3px; border: 1px solid #ddd;
+    background: #fff; font-size: 12px; cursor: pointer; margin-left: auto;
+  }
+  .btn-autoscroll {
+    padding: 4px 12px; border-radius: 3px; border: 1px solid #ddd;
+    background: #fff; font-size: 12px; cursor: pointer;
+  }
+  .btn-autoscroll.on { border-color: #28a745; color: #28a745; font-weight: 600; }
+
+  #log-box {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 12.5px;
+    line-height: 1.6;
+    padding: 14px 16px;
+    border-radius: 5px;
+    height: 520px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  #log-box::-webkit-scrollbar { width: 6px; }
+  #log-box::-webkit-scrollbar-track { background: #2d2d2d; }
+  #log-box::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
+
+  .log-line { display: block; padding: 1px 0; }
+  .log-line.info    { color: #d4d4d4; }
+  .log-line.warning { color: #f0c040; }
+  .log-line.error   { color: #f47070; }
+  .log-line.debug   { color: #7ec8e3; }
+  .log-line.hidden  { display: none; }
+
+  /* ── SSE status chip ──────────────────────────────────── */
+  #sse-status {
+    font-size: 11px; padding: 2px 8px; border-radius: 10px;
+    font-weight: 600;
+  }
+  #sse-status.connected    { background: #d4edda; color: #155724; }
+  #sse-status.connecting   { background: #fff3cd; color: #856404; }
+  #sse-status.disconnected { background: #f8d7da; color: #721c24; }
+</style>
+
+<h1>🤖 Bot Control</h1>
+
+{% if messages %}
+  {% for msg in messages %}
+    <div class="alert" style="padding:10px 16px;border-radius:4px;margin-bottom:16px;
+      background:{% if msg.tags == 'error' %}#f8d7da{% elif msg.tags == 'warning' %}#fff3cd{% else %}#d4edda{% endif %};
+      color:{% if msg.tags == 'error' %}#721c24{% elif msg.tags == 'warning' %}#856404{% else %}#155724{% endif %}">
+      {{ msg }}
+    </div>
+  {% endfor %}
+{% endif %}
+
+<!-- ── Status & Controls ──────────────────────────────────────────────── -->
+<div class="bc-card">
+  <h2>Status</h2>
+
+  <div class="status-badge" id="status-badge">
+    <span class="status-dot {% if ctrl.is_running %}running{% else %}stopped{% endif %}" id="status-dot"></span>
+    <span id="status-text">{% if ctrl.is_running %}Running{% else %}Stopped{% endif %}</span>
+  </div>
+
+  <div class="bc-meta">
+    <span><strong>PID:</strong> <span id="meta-pid">{{ ctrl.pid|default:"—" }}</span></span>
+    <span><strong>Started:</strong> <span id="meta-started">{{ ctrl.started_at|default:"—" }}</span></span>
+    <span><strong>Stopped:</strong> <span id="meta-stopped">{{ ctrl.stopped_at|default:"—" }}</span></span>
+  </div>
+
+  <div class="bc-actions">
+
+    <!-- START form -->
+    <form method="post" action="{% url 'bot:start' %}" id="start-form">
+      {% csrf_token %}
+      {% if not has_totp_secret %}
+      <div id="totp-section">
+        <label for="totp_code">🔐 TOTP Code:</label>
+        <input type="text" name="totp_code" id="totp_code"
+               maxlength="6" placeholder="123456"
+               autocomplete="one-time-code" inputmode="numeric">
+      </div>
+      {% endif %}
+      <button type="submit" class="btn-start"
+              {% if ctrl.is_running %}disabled{% endif %}
+              id="btn-start">
+        ▶ Start Bot
+      </button>
+    </form>
+
+    <!-- STOP form -->
+    <form method="post" action="{% url 'bot:stop' %}">
+      {% csrf_token %}
+      <button type="submit" class="btn-stop"
+              {% if not ctrl.is_running %}disabled{% endif %}
+              id="btn-stop"
+              onclick="return confirm('Stop the running bot?')">
+        ■ Stop Bot
+      </button>
+    </form>
+
+  </div>
+</div>
+
+<!-- ── Live Log Viewer ────────────────────────────────────────────────── -->
+<div class="bc-card">
+  <h2>
+    Live Logs
+    <span id="sse-status" class="connecting" style="margin-left:10px;">connecting…</span>
+    <span style="font-size:12px;color:#888;font-weight:400;margin-left:12px;">
+      {{ log_file }}
+    </span>
+  </h2>
+
+  <div class="log-toolbar">
+    <button class="log-filter-btn active" data-level="all"     onclick="setFilter('all',this)">All</button>
+    <button class="log-filter-btn"        data-level="info"    onclick="setFilter('info',this)">INFO</button>
+    <button class="log-filter-btn"        data-level="warning" onclick="setFilter('warning',this)" style="color:#856404">WARN</button>
+    <button class="log-filter-btn"        data-level="error"   onclick="setFilter('error',this)"   style="color:#721c24">ERROR</button>
+    <button class="log-filter-btn"        data-level="debug"   onclick="setFilter('debug',this)"   style="color:#0c5460">DEBUG</button>
+
+    <button class="btn-autoscroll on" id="btn-autoscroll" onclick="toggleAutoscroll()">
+      ↓ Auto-scroll ON
+    </button>
+    <button class="btn-clear-log" onclick="clearLog()">🗑 Clear</button>
+  </div>
+
+  <div id="log-box"></div>
+</div>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────
+let autoScroll   = true;
+let activeFilter = "all";
+let evtSource    = null;
+const MAX_LINES  = 1000;   // keep at most this many lines in the DOM
+
+// ── Log box helpers ──────────────────────────────────────────────────────
+const logBox = document.getElementById("log-box");
+
+function detectLevel(line) {
+  if (/\[ERROR\s*\]/.test(line) || /\bERROR\b/.test(line))   return "error";
+  if (/\[WARNING\s*\]/.test(line) || /\bWARNING\b/.test(line)) return "warning";
+  if (/\[DEBUG\s*\]/.test(line) || /\bDEBUG\b/.test(line))   return "debug";
+  return "info";
+}
+
+function appendLine(text) {
+  const level = detectLevel(text);
+  const span  = document.createElement("span");
+  span.className = `log-line ${level}`;
+  span.dataset.level = level;
+  span.textContent = text;
+
+  if (activeFilter !== "all" && activeFilter !== level) {
+    span.classList.add("hidden");
+  }
+
+  logBox.appendChild(span);
+
+  // Trim old lines to prevent unbounded growth
+  while (logBox.childElementCount > MAX_LINES) {
+    logBox.removeChild(logBox.firstChild);
+  }
+
+  if (autoScroll) {
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+}
+
+// ── Filter ───────────────────────────────────────────────────────────────
+function setFilter(level, btn) {
+  activeFilter = level;
+  document.querySelectorAll(".log-filter-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+
+  document.querySelectorAll(".log-line").forEach(el => {
+    if (level === "all" || el.dataset.level === level) {
+      el.classList.remove("hidden");
+    } else {
+      el.classList.add("hidden");
+    }
+  });
+
+  if (autoScroll) logBox.scrollTop = logBox.scrollHeight;
+}
+
+// ── Auto-scroll ──────────────────────────────────────────────────────────
+function toggleAutoscroll() {
+  autoScroll = !autoScroll;
+  const btn = document.getElementById("btn-autoscroll");
+  btn.textContent = autoScroll ? "↓ Auto-scroll ON" : "↓ Auto-scroll OFF";
+  btn.classList.toggle("on", autoScroll);
+}
+
+logBox.addEventListener("scroll", () => {
+  // User scrolled up manually — disable auto-scroll
+  const atBottom = logBox.scrollHeight - logBox.scrollTop - logBox.clientHeight < 30;
+  if (!atBottom && autoScroll) toggleAutoscroll();
+});
+
+// ── Clear ────────────────────────────────────────────────────────────────
+function clearLog() {
+  logBox.innerHTML = "";
+}
+
+// ── SSE connection ───────────────────────────────────────────────────────
+function connectSSE() {
+  const sseStatus = document.getElementById("sse-status");
+
+  if (evtSource) evtSource.close();
+
+  sseStatus.textContent  = "connecting…";
+  sseStatus.className    = "connecting";
+
+  evtSource = new EventSource("{% url 'bot:log_stream' %}");
+
+  evtSource.onopen = () => {
+    sseStatus.textContent = "● live";
+    sseStatus.className   = "connected";
+  };
+
+  evtSource.onmessage = (e) => {
+    if (e.data) appendLine(e.data);
+  };
+
+  evtSource.onerror = () => {
+    sseStatus.textContent = "disconnected — retrying…";
+    sseStatus.className   = "disconnected";
+    // Browser automatically retries SSE; we just update the chip
+  };
+}
+
+// ── Status polling (every 5 s) ───────────────────────────────────────────
+function pollStatus() {
+  fetch("{% url 'bot:status' %}")
+    .then(r => r.json())
+    .then(data => {
+      const dot     = document.getElementById("status-dot");
+      const text    = document.getElementById("status-text");
+      const btnStart = document.getElementById("btn-start");
+      const btnStop  = document.getElementById("btn-stop");
+
+      if (data.running) {
+        dot.className    = "status-dot running";
+        text.textContent = "Running";
+        btnStart.disabled = true;
+        btnStop.disabled  = false;
+      } else {
+        dot.className    = "status-dot stopped";
+        text.textContent = "Stopped";
+        btnStart.disabled = false;
+        btnStop.disabled  = true;
+      }
+
+      document.getElementById("meta-pid").textContent     = data.pid || "—";
+      document.getElementById("meta-started").textContent = data.started_at || "—";
+      document.getElementById("meta-stopped").textContent = data.stopped_at || "—";
+    })
+    .catch(() => {});
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────
+connectSSE();
+setInterval(pollStatus, 5000);
+</script>
+
+{% endblock %}

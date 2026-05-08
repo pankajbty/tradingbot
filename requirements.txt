@@ -3,3 +3,4 @@ schedule>=1.2.0
 pandas>=2.0.0
 python-dotenv>=1.0.0
 django>=4.2
+pyotp>=2.9.0        # optional: auto-generate TOTP when secret is stored in DB

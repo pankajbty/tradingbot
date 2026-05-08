@@ -6,6 +6,7 @@ from django.utils.html import format_html
 
 from .models import (
     BollingerConfig,
+    BotControl,
     FixedBuyConfig,
     FixedBuyStock,
     MACrossoverConfig,
@@ -237,3 +238,19 @@ class TradeLogAdmin(admin.ModelAdmin):
             '<span style="color:{}">{}</span>', colour, obj.status,
         )
     status_badge.short_description = "Status"
+
+
+# ---------------------------------------------------------------------------
+# Bot Control — redirects changelist straight to the custom control page
+# ---------------------------------------------------------------------------
+
+@admin.register(BotControl)
+class BotControlAdmin(admin.ModelAdmin):
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def changelist_view(self, request, extra_context=None):
+        return HttpResponseRedirect(reverse("bot:control"))

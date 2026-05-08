@@ -1,4 +1,5 @@
 import logging
+import os
 
 from jugaad_trader import Zerodha
 
@@ -28,7 +29,11 @@ class Trader:
                 "ZERODHA_USER_ID and ZERODHA_PASSWORD must be set in your .env file."
             )
 
-        totp = input("\nEnter the 6-digit code from your authenticator app: ").strip()
+        # When launched from the Django admin UI the TOTP code is passed via env var.
+        # When run from the terminal directly, prompt the user interactively.
+        totp = os.environ.get("BOT_TOTP_CODE") or input(
+            "\nEnter the 6-digit code from your authenticator app: "
+        ).strip()
         logger.info(f"Logging in as {user_id} ...")
 
         z = Zerodha(user_id=user_id, password=password, twofa=totp)

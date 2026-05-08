@@ -299,6 +299,24 @@ class BollingerConfig(SingletonModel):
 
 
 # ---------------------------------------------------------------------------
+# Bot process control
+# ---------------------------------------------------------------------------
+
+class BotControl(SingletonModel):
+    is_running = models.BooleanField(default=False)
+    pid        = models.IntegerField(null=True, blank=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    stopped_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name        = "Bot Control"
+        verbose_name_plural = "Bot Control"
+
+    def __str__(self):
+        return "Running" if self.is_running else "Stopped"
+
+
+# ---------------------------------------------------------------------------
 # Trade log — written by LoggingTrader, read-only in admin
 # ---------------------------------------------------------------------------
 
