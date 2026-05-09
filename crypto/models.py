@@ -48,9 +48,7 @@ _CRYPTO_INTERVAL_CHOICES = [
 ]
 
 _EXCHANGE_CHOICES = [
-    ("coindcx", "CoinDCX"),
-    ("wazirx",  "WazirX"),
-    ("binance",  "Binance"),
+    ("coindcx", "CoinDCX (Indian exchange — BTC/INR pairs)"),
 ]
 
 
@@ -64,7 +62,7 @@ class CryptoExchangeConfig(SingletonModel):
         default="coindcx",
         choices=_EXCHANGE_CHOICES,
         verbose_name="Exchange",
-        help_text="The ccxt exchange identifier to use.",
+        help_text="Exchange to use. Currently CoinDCX (direct REST API, no ccxt required).",
     )
     api_key = models.CharField(
         max_length=200,

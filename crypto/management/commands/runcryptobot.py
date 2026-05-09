@@ -86,7 +86,7 @@ class Command(BaseCommand):
                 "api_secret": exchange_cfg.get("api_secret", ""),
             },
         )
-        market_data = CryptoMarketData(trader.exchange)
+        market_data = CryptoMarketData(trader)
         risk_mgr    = CryptoRiskManager(trader, config=risk_cfg)
 
         # ---- Build active strategies (only if enabled in DB) ----
