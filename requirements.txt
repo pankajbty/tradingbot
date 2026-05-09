@@ -1,6 +1,8 @@
 jugaad-trader>=0.2.5
 schedule>=1.2.0
 pandas>=2.0.0
+numpy>=1.24.0
 python-dotenv>=1.0.0
 django>=4.2
 pyotp>=2.9.0        # optional: auto-generate TOTP when secret is stored in DB
+ccxt>=4.0.0         # crypto exchange connectivity (CoinDCX, WazirX, Binance, etc.)

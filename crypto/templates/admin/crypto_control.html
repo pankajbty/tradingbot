@@ -1,0 +1,524 @@
+{% extends "admin/base_site.html" %}
+
+{% block title %}Crypto Bot Control — Trading Bot Admin{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Home</a> › Crypto Bot Control
+</div>
+{% endblock %}
+
+{% block content %}
+<style>
+  /* ── Reset & base ───────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; }
+
+  .bc-page { max-width: 1100px; }
+
+  /* ── Cards ──────────────────────────────────────────────────────── */
+  .bc-card {
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .bc-card-header {
+    padding: 14px 22px;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .bc-card-header h2 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    color: #6b7280;
+  }
+  .bc-card-body { padding: 24px 22px; }
+
+  /* ── Status row ─────────────────────────────────────────────────── */
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    flex-wrap: wrap;
+  }
+  .status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .status-dot {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .status-dot.running {
+    background: #7c3aed;
+    box-shadow: 0 0 0 4px rgba(124,58,237,.2);
+    animation: pulse 1.8s ease infinite;
+  }
+  .status-dot.stopped { background: #ef4444; }
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 0 4px rgba(124,58,237,.2); }
+    50%      { box-shadow: 0 0 0 8px rgba(124,58,237,.05); }
+  }
+  .status-label {
+    font-size: 22px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .status-meta {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .meta-item .meta-key {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    color: #9ca3af;
+  }
+  .meta-item .meta-val {
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+    font-family: 'Courier New', monospace;
+  }
+
+  /* ── Divider ────────────────────────────────────────────────────── */
+  .bc-divider { border: none; border-top: 1px solid #f3f4f6; margin: 20px 0; }
+
+  /* ── Action row ─────────────────────────────────────────────────── */
+  .action-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  /* ── Info note ──────────────────────────────────────────────────── */
+  .api-note {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: #f5f3ff;
+    border: 1px solid #ddd6fe;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #5b21b6;
+    font-weight: 500;
+    margin-bottom: 16px;
+  }
+
+  /* ── Buttons ────────────────────────────────────────────────────── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 22px;
+    border-radius: 8px;
+    border: none;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .15s;
+    white-space: nowrap;
+    text-decoration: none;
+  }
+  .btn:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+  .btn-purple {
+    background: #7c3aed;
+    color: #fff;
+    box-shadow: 0 1px 3px rgba(124,58,237,.3);
+  }
+  .btn-purple:hover { background: #6d28d9; box-shadow: 0 2px 6px rgba(124,58,237,.35); }
+
+  .btn-red {
+    background: #dc2626;
+    color: #fff;
+    box-shadow: 0 1px 3px rgba(220,38,38,.3);
+  }
+  .btn-red:hover { background: #b91c1c; box-shadow: 0 2px 6px rgba(220,38,38,.35); }
+
+  .btn-ghost {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #e5e7eb;
+  }
+  .btn-ghost:hover { background: #e5e7eb; }
+
+  .btn-sm { padding: 6px 14px; font-size: 12px; border-radius: 6px; }
+
+  /* ── Log terminal ───────────────────────────────────────────────── */
+  .log-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .filter-pill {
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1.5px solid #e5e7eb;
+    background: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: .3px;
+    transition: all .15s;
+    color: #6b7280;
+  }
+  .filter-pill:hover { border-color: #9ca3af; color: #374151; }
+  .filter-pill.active-all     { background: #111827; border-color: #111827; color: #fff; }
+  .filter-pill.active-info    { background: #e0f2fe; border-color: #0ea5e9; color: #0369a1; }
+  .filter-pill.active-warning { background: #fef9c3; border-color: #eab308; color: #713f12; }
+  .filter-pill.active-error   { background: #fee2e2; border-color: #ef4444; color: #991b1b; }
+  .filter-pill.active-debug   { background: #ede9fe; border-color: #8b5cf6; color: #5b21b6; }
+
+  .log-toolbar-right { margin-left: auto; display: flex; gap: 8px; }
+
+  .sse-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    letter-spacing: .3px;
+  }
+  .sse-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .sse-chip.live         { background: #dcfce7; color: #16a34a; }
+  .sse-chip.connecting   { background: #fef9c3; color: #ca8a04; }
+  .sse-chip.disconnected { background: #fee2e2; color: #dc2626; }
+
+  #log-box {
+    background: #0f1117;
+    color: #c9d1d9;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.65;
+    padding: 16px 18px;
+    border-radius: 8px;
+    height: 500px;
+    overflow-y: auto;
+    margin-top: 14px;
+  }
+  #log-box::-webkit-scrollbar { width: 5px; }
+  #log-box::-webkit-scrollbar-track { background: transparent; }
+  #log-box::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+
+  .log-line { display: flex; gap: 10px; padding: 1.5px 0; }
+  .log-line.hidden { display: none; }
+  .log-ts   { color: #484f58; flex-shrink: 0; user-select: none; }
+  .log-lvl  { flex-shrink: 0; font-weight: 700; min-width: 52px; }
+  .log-msg  { word-break: break-word; }
+
+  .log-line.info    .log-lvl { color: #58a6ff; }
+  .log-line.warning .log-lvl { color: #e3b341; }
+  .log-line.warning .log-msg { color: #e3b341; }
+  .log-line.error   .log-lvl { color: #f85149; }
+  .log-line.error   .log-msg { color: #f85149; }
+  .log-line.debug   .log-lvl { color: #7ee787; }
+  .log-line.debug   .log-msg { color: #484f58; }
+
+  .log-empty {
+    color: #484f58;
+    font-style: italic;
+    text-align: center;
+    margin-top: 60px;
+    font-size: 13px;
+  }
+
+  /* ── Alert banner ───────────────────────────────────────────────── */
+  .bc-alert {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 18px;
+    border-radius: 8px;
+    margin-bottom: 18px;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .bc-alert.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+  .bc-alert.warning { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+  .bc-alert.error   { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+  .bc-alert.info    { background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; }
+</style>
+
+<div class="bc-page">
+  <h1 style="font-size:22px;font-weight:700;color:#111827;margin:0 0 20px;">🪙 Crypto Bot Control</h1>
+
+  <!-- Alerts -->
+  {% for msg in messages %}
+  <div class="bc-alert {% if msg.tags == 'error' %}error{% elif msg.tags == 'warning' %}warning{% elif msg.tags == 'success' %}success{% else %}info{% endif %}">
+    {% if msg.tags == 'success' %}✅{% elif msg.tags == 'error' %}❌{% elif msg.tags == 'warning' %}⚠️{% else %}ℹ️{% endif %}
+    {{ msg }}
+  </div>
+  {% endfor %}
+
+  <!-- ── Status Card ──────────────────────────────────────────────── -->
+  <div class="bc-card">
+    <div class="bc-card-header">
+      <h2>Status</h2>
+      <span class="sse-chip connecting" id="sse-chip">
+        <span class="dot"></span>
+        <span id="sse-text">connecting</span>
+      </span>
+    </div>
+    <div class="bc-card-body">
+
+      <div class="status-row">
+        <div class="status-indicator">
+          <span class="status-dot {% if ctrl.is_running %}running{% else %}stopped{% endif %}" id="status-dot"></span>
+          <span class="status-label" id="status-label">{% if ctrl.is_running %}Running{% else %}Stopped{% endif %}</span>
+        </div>
+
+        <div class="status-meta">
+          <div class="meta-item">
+            <span class="meta-key">PID</span>
+            <span class="meta-val" id="meta-pid">{{ ctrl.pid|default:"—" }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-key">Started</span>
+            <span class="meta-val" id="meta-started">{{ ctrl.started_at|default:"—" }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-key">Stopped</span>
+            <span class="meta-val" id="meta-stopped">{{ ctrl.stopped_at|default:"—" }}</span>
+          </div>
+        </div>
+      </div>
+
+      <hr class="bc-divider">
+
+      <div class="api-note">
+        🔑 API Key and Secret must be configured in <a href="{% url 'admin:crypto_cryptoexchangeconfig_change' 1 %}" style="color:#7c3aed;font-weight:700;">Crypto Exchange Config</a> before starting.
+      </div>
+
+      <div class="action-row">
+
+        <form method="post" action="{% url 'crypto:start' %}" id="start-form" style="display:contents">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-purple" id="btn-start"
+                  {% if ctrl.is_running %}disabled{% endif %}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            Start Crypto Bot
+          </button>
+        </form>
+
+        <form method="post" action="{% url 'crypto:stop' %}" style="display:contents">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-red" id="btn-stop"
+                  {% if not ctrl.is_running %}disabled{% endif %}
+                  onclick="return confirm('Send stop signal to the running crypto bot?')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16"/></svg>
+            Stop Crypto Bot
+          </button>
+        </form>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Live Log Card ────────────────────────────────────────────── -->
+  <div class="bc-card">
+    <div class="bc-card-header">
+      <h2>Live Logs</h2>
+      <span style="font-size:11px;color:#9ca3af;font-weight:400;">{{ log_file }}</span>
+    </div>
+    <div class="bc-card-body" style="padding-bottom:18px;">
+
+      <div class="log-toolbar">
+        <button class="filter-pill active-all" onclick="setFilter('all',this)">All</button>
+        <button class="filter-pill" onclick="setFilter('info',this)">INFO</button>
+        <button class="filter-pill" onclick="setFilter('warning',this)">WARN</button>
+        <button class="filter-pill" onclick="setFilter('error',this)">ERROR</button>
+        <button class="filter-pill" onclick="setFilter('debug',this)">DEBUG</button>
+
+        <div class="log-toolbar-right">
+          <button class="btn btn-ghost btn-sm" id="btn-scroll" onclick="toggleAutoScroll()">↓ Auto-scroll</button>
+          <button class="btn btn-ghost btn-sm" onclick="clearLog()">🗑 Clear</button>
+        </div>
+      </div>
+
+      <div id="log-box">
+        <div class="log-empty" id="log-empty">Waiting for log lines…</div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- .bc-page -->
+
+<script>
+// ── Config ───────────────────────────────────────────────────────────────
+const MAX_LINES    = 1200;
+let   autoScroll   = true;
+let   activeFilter = "all";
+let   evtSource    = null;
+let   lineCount    = 0;
+
+// ── Log rendering ────────────────────────────────────────────────────────
+const logBox   = document.getElementById("log-box");
+const logEmpty = document.getElementById("log-empty");
+
+const LEVEL_RE = /\[(INFO|WARNING|ERROR|DEBUG)\s*\]/;
+
+function parseLine(raw) {
+  // Format: "2024-01-15 09:15:00 [INFO    ] CryptoApp: message"
+  const m = raw.match(/^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s+\[(\w+)\s*\]\s+(.*)$/);
+  if (m) return { ts: m[1], level: m[2].toLowerCase(), msg: m[3] };
+  // fallback — no structured parse
+  const lv = LEVEL_RE.exec(raw);
+  return { ts: "", level: lv ? lv[1].toLowerCase() : "info", msg: raw };
+}
+
+function appendLine(raw) {
+  if (!raw.trim()) return;
+
+  if (logEmpty) logEmpty.remove();
+
+  const { ts, level, msg } = parseLine(raw);
+
+  const row = document.createElement("div");
+  row.className = `log-line ${level}`;
+  row.dataset.level = level;
+
+  if (ts) {
+    const tsEl = document.createElement("span");
+    tsEl.className = "log-ts";
+    tsEl.textContent = ts;
+    row.appendChild(tsEl);
+  }
+
+  const lvEl = document.createElement("span");
+  lvEl.className = "log-lvl";
+  lvEl.textContent = `[${level.toUpperCase()}]`;
+  row.appendChild(lvEl);
+
+  const msgEl = document.createElement("span");
+  msgEl.className = "log-msg";
+  msgEl.textContent = msg;
+  row.appendChild(msgEl);
+
+  if (activeFilter !== "all" && activeFilter !== level) {
+    row.classList.add("hidden");
+  }
+
+  logBox.appendChild(row);
+  lineCount++;
+
+  // Prune oldest lines
+  while (lineCount > MAX_LINES) {
+    logBox.removeChild(logBox.firstChild);
+    lineCount--;
+  }
+
+  if (autoScroll) logBox.scrollTop = logBox.scrollHeight;
+}
+
+// ── Filter ───────────────────────────────────────────────────────────────
+function setFilter(level, btn) {
+  activeFilter = level;
+  const prefix = "active-";
+
+  document.querySelectorAll(".filter-pill").forEach(b => {
+    b.className = "filter-pill";
+  });
+  btn.className = `filter-pill ${prefix}${level}`;
+
+  document.querySelectorAll(".log-line").forEach(el => {
+    el.classList.toggle("hidden", level !== "all" && el.dataset.level !== level);
+  });
+
+  if (autoScroll) logBox.scrollTop = logBox.scrollHeight;
+}
+
+// ── Auto-scroll ──────────────────────────────────────────────────────────
+const scrollBtn = document.getElementById("btn-scroll");
+
+function setAutoScroll(val) {
+  autoScroll = val;
+  scrollBtn.textContent = autoScroll ? "↓ Auto-scroll" : "⏸ Paused";
+  scrollBtn.style.color = autoScroll ? "" : "#f59e0b";
+  scrollBtn.style.borderColor = autoScroll ? "" : "#f59e0b";
+  if (autoScroll) logBox.scrollTop = logBox.scrollHeight;
+}
+
+function toggleAutoScroll() { setAutoScroll(!autoScroll); }
+
+logBox.addEventListener("scroll", () => {
+  const atBottom = logBox.scrollHeight - logBox.scrollTop - logBox.clientHeight < 40;
+  if (!atBottom && autoScroll) setAutoScroll(false);
+});
+
+function clearLog() {
+  logBox.innerHTML = "";
+  lineCount = 0;
+}
+
+// ── SSE ──────────────────────────────────────────────────────────────────
+const sseChip = document.getElementById("sse-chip");
+const sseText = document.getElementById("sse-text");
+
+function setSseStatus(state) {
+  sseChip.className = `sse-chip ${state}`;
+  sseText.textContent = { live: "live", connecting: "connecting", disconnected: "reconnecting" }[state] || state;
+}
+
+function connectSSE() {
+  if (evtSource) evtSource.close();
+  setSseStatus("connecting");
+
+  evtSource = new EventSource("{% url 'crypto:log_stream' %}");
+  evtSource.onopen    = () => setSseStatus("live");
+  evtSource.onmessage = e => { if (e.data) appendLine(e.data); };
+  evtSource.onerror   = () => setSseStatus("disconnected");
+}
+
+// ── Status polling ───────────────────────────────────────────────────────
+const statusDot   = document.getElementById("status-dot");
+const statusLabel = document.getElementById("status-label");
+const btnStart    = document.getElementById("btn-start");
+const btnStop     = document.getElementById("btn-stop");
+
+function pollStatus() {
+  fetch("{% url 'crypto:status' %}")
+    .then(r => r.json())
+    .then(d => {
+      statusDot.className = `status-dot ${d.running ? "running" : "stopped"}`;
+      statusLabel.textContent = d.running ? "Running" : "Stopped";
+      if (btnStart) btnStart.disabled = d.running;
+      if (btnStop)  btnStop.disabled  = !d.running;
+      document.getElementById("meta-pid").textContent     = d.pid        || "—";
+      document.getElementById("meta-started").textContent = d.started_at || "—";
+      document.getElementById("meta-stopped").textContent = d.stopped_at || "—";
+    }).catch(() => {});
+}
+
+// ── Boot ─────────────────────────────────────────────────────────────────
+connectSSE();
+setInterval(pollStatus, 5000);
+</script>
+
+{% endblock %}
