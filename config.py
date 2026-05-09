@@ -55,6 +55,10 @@ OPEN_RANGE_CONFIG = {
     # True  → trade both breakout (BUY) and breakdown (SELL short)
     # False → only BUY on breakout above range high (no short selling)
     "allow_short": False,
+    # True  → keep re-entering after a stop-loss until a profitable trade closes
+    "stop_on_profit": False,
+    # Max re-entry attempts per day (0 = unlimited). Applies when stop_on_profit=True
+    "max_entries_per_day": 1,
 }
 
 # ---------------------------------------------------------------------------

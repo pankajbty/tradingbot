@@ -233,6 +233,22 @@ class OpenRangeConfig(SingletonModel):
         default=False, verbose_name="Allow Short Selling",
         help_text="If enabled, places a SELL order when price breaks below the range low.",
     )
+    stop_on_profit          = models.BooleanField(
+        default=False, verbose_name="Trade Until Profit",
+        help_text=(
+            "Keep re-entering after a stop-loss until a trade closes profitably. "
+            "Once a profitable trade closes, no more entries for the day."
+        ),
+    )
+    max_entries_per_day     = models.IntegerField(
+        default=1, verbose_name="Max Entries Per Day",
+        help_text=(
+            "Maximum number of entry attempts per day. "
+            "Set to 1 for the original one-trade-per-day behaviour. "
+            "Increase when 'Trade Until Profit' is enabled (e.g. 5). "
+            "0 = unlimited (not recommended)."
+        ),
+    )
 
     class Meta:
         verbose_name        = "Open Range Breakout Strategy"
@@ -248,6 +264,8 @@ class OpenRangeConfig(SingletonModel):
             "quantity_per_stock":     self.quantity_per_stock,
             "check_interval_minutes": self.check_interval_minutes,
             "allow_short":            self.allow_short,
+            "stop_on_profit":         self.stop_on_profit,
+            "max_entries_per_day":    self.max_entries_per_day,
         }
 
 

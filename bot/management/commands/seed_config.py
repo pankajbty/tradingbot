@@ -95,6 +95,8 @@ class Command(BaseCommand):
             obj.quantity_per_stock      = C.OPEN_RANGE_CONFIG["quantity_per_stock"]
             obj.check_interval_minutes  = C.OPEN_RANGE_CONFIG["check_interval_minutes"]
             obj.allow_short             = C.OPEN_RANGE_CONFIG.get("allow_short", False)
+            obj.stop_on_profit          = C.OPEN_RANGE_CONFIG.get("stop_on_profit", False)
+            obj.max_entries_per_day     = C.OPEN_RANGE_CONFIG.get("max_entries_per_day", 1)
             obj.save()
             self.stdout.write("  Created OpenRangeConfig")
         else:

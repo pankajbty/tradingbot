@@ -162,6 +162,15 @@ class OpenRangeConfigAdmin(SingletonModelAdmin):
                 "Buy when price breaks above range high; sell (if allow_short) on breakdown."
             ),
         }),
+        ("Re-entry / Trade Until Profit", {
+            "fields": ["stop_on_profit", "max_entries_per_day"],
+            "description": (
+                "Enable 'Trade Until Profit' to keep re-entering after a stop-loss. "
+                "The strategy will stop for the day only after a trade closes profitably. "
+                "Set 'Max Entries Per Day' to limit how many attempts are allowed "
+                "(recommended: 3–5 to cap your downside)."
+            ),
+        }),
     ]
 
 
