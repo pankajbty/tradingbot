@@ -39,6 +39,13 @@ MA_CROSSOVER_CONFIG = {
     "candle_interval": "5minute",  # kiteconnect interval string
     "quantity_per_stock": 1,
     "check_interval_minutes": 5,
+    # True  → wait for each position to close; stop once a trade closes profitably
+    "stop_on_profit": False,
+    # Max entry attempts per day (0 = unlimited — original behaviour)
+    "max_entries_per_day": 0,
+    # Active trading window (IST)
+    "active_from":  "09:15",
+    "active_until": "15:15",
 }
 
 # ---------------------------------------------------------------------------
@@ -59,6 +66,9 @@ OPEN_RANGE_CONFIG = {
     "stop_on_profit": False,
     # Max re-entry attempts per day (0 = unlimited). Applies when stop_on_profit=True
     "max_entries_per_day": 1,
+    # Active trading window (IST) — ORB works best in the first 2 hours
+    "active_from":  "09:30",
+    "active_until": "11:00",
 }
 
 # ---------------------------------------------------------------------------
@@ -75,6 +85,13 @@ BOLLINGER_CONFIG = {
     "quantity_per_stock": 1,
     "check_interval_minutes": 5,
     "allow_short": False,          # True → also SELL when price crosses below upper band
+    # True  → keep re-entering after a stop-loss until a profitable trade closes
+    "stop_on_profit": False,
+    # Max re-entry attempts per day (0 = unlimited). Applies when stop_on_profit=True
+    "max_entries_per_day": 1,
+    # Active trading window (IST)
+    "active_from":  "09:15",
+    "active_until": "15:15",
 }
 
 # ---------------------------------------------------------------------------

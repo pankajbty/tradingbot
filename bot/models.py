@@ -191,6 +191,25 @@ class MACrossoverConfig(SingletonModel):
     check_interval_minutes  = models.IntegerField(
         default=5, verbose_name="Check Every (minutes)",
     )
+    stop_on_profit          = models.BooleanField(
+        default=False, verbose_name="Trade Until Profit",
+        help_text=(
+            "Wait for each position to close before looking for the next crossover. "
+            "Stop trading for the day once a trade closes profitably."
+        ),
+    )
+    max_entries_per_day     = models.IntegerField(
+        default=0, verbose_name="Max Entries Per Day",
+        help_text="Max entry attempts per day. 0 = unlimited (original behaviour).",
+    )
+    active_from             = models.TimeField(
+        default="09:15", verbose_name="Active From (HH:MM IST)",
+        help_text="Strategy will not run before this time each day.",
+    )
+    active_until            = models.TimeField(
+        default="15:15", verbose_name="Active Until (HH:MM IST)",
+        help_text="Strategy will not run after this time each day.",
+    )
 
     class Meta:
         verbose_name        = "MA Crossover Strategy"
@@ -210,6 +229,10 @@ class MACrossoverConfig(SingletonModel):
             "candle_interval":        self.candle_interval,
             "quantity_per_stock":     self.quantity_per_stock,
             "check_interval_minutes": self.check_interval_minutes,
+            "stop_on_profit":         self.stop_on_profit,
+            "max_entries_per_day":    self.max_entries_per_day,
+            "active_from":            self.active_from.strftime("%H:%M"),
+            "active_until":           self.active_until.strftime("%H:%M"),
         }
 
 
@@ -249,6 +272,14 @@ class OpenRangeConfig(SingletonModel):
             "0 = unlimited (not recommended)."
         ),
     )
+    active_from             = models.TimeField(
+        default="09:15", verbose_name="Active From (HH:MM IST)",
+        help_text="Strategy will not run before this time each day.",
+    )
+    active_until            = models.TimeField(
+        default="15:15", verbose_name="Active Until (HH:MM IST)",
+        help_text="Strategy will not run after this time each day. Recommended: 11:00 for ORB.",
+    )
 
     class Meta:
         verbose_name        = "Open Range Breakout Strategy"
@@ -266,6 +297,8 @@ class OpenRangeConfig(SingletonModel):
             "allow_short":            self.allow_short,
             "stop_on_profit":         self.stop_on_profit,
             "max_entries_per_day":    self.max_entries_per_day,
+            "active_from":            self.active_from.strftime("%H:%M"),
+            "active_until":           self.active_until.strftime("%H:%M"),
         }
 
 
@@ -296,6 +329,30 @@ class BollingerConfig(SingletonModel):
         default=False, verbose_name="Allow Short Selling",
         help_text="If enabled, places a SELL order when price crosses back below the upper band.",
     )
+    stop_on_profit          = models.BooleanField(
+        default=False, verbose_name="Trade Until Profit",
+        help_text=(
+            "Keep re-entering after a stop-loss until a trade closes profitably. "
+            "Once a profitable trade closes, no more entries for the day."
+        ),
+    )
+    max_entries_per_day     = models.IntegerField(
+        default=1, verbose_name="Max Entries Per Day",
+        help_text=(
+            "Max entry attempts per day. "
+            "Set to 1 for original one-trade-per-day behaviour. "
+            "Increase when 'Trade Until Profit' is enabled (e.g. 5). "
+            "0 = unlimited (not recommended)."
+        ),
+    )
+    active_from             = models.TimeField(
+        default="09:15", verbose_name="Active From (HH:MM IST)",
+        help_text="Strategy will not run before this time each day.",
+    )
+    active_until            = models.TimeField(
+        default="15:15", verbose_name="Active Until (HH:MM IST)",
+        help_text="Strategy will not run after this time each day.",
+    )
 
     class Meta:
         verbose_name        = "Bollinger Band Strategy"
@@ -313,6 +370,10 @@ class BollingerConfig(SingletonModel):
             "quantity_per_stock":     self.quantity_per_stock,
             "check_interval_minutes": self.check_interval_minutes,
             "allow_short":            self.allow_short,
+            "stop_on_profit":         self.stop_on_profit,
+            "max_entries_per_day":    self.max_entries_per_day,
+            "active_from":            self.active_from.strftime("%H:%M"),
+            "active_until":           self.active_until.strftime("%H:%M"),
         }
 
 

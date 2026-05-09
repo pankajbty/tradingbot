@@ -140,6 +140,23 @@ class MACrossoverConfigAdmin(SingletonModelAdmin):
         }),
         ("EMA Parameters", {"fields": ["fast_period", "slow_period", "candle_interval"]}),
         ("Scheduling", {"fields": ["check_interval_minutes"]}),
+        ("Re-entry / Trade Until Profit", {
+            "fields": ["stop_on_profit", "max_entries_per_day"],
+            "description": (
+                "Enable 'Trade Until Profit' to wait for each position to close before "
+                "looking for the next crossover signal, and stop for the day once a trade "
+                "closes profitably. Set 'Max Entries Per Day' to cap losses (e.g. 3–5). "
+                "0 = unlimited (original behaviour)."
+            ),
+        }),
+        ("Active Hours (IST)", {
+            "fields": ["active_from", "active_until"],
+            "description": (
+                "Strategy fires only within this daily time window. "
+                "Default: 09:15–15:15 (full market day). "
+                "Example: set 11:00–13:00 to trade only in the mid-session."
+            ),
+        }),
     ]
 
 
@@ -171,6 +188,14 @@ class OpenRangeConfigAdmin(SingletonModelAdmin):
                 "(recommended: 3–5 to cap your downside)."
             ),
         }),
+        ("Active Hours (IST)", {
+            "fields": ["active_from", "active_until"],
+            "description": (
+                "Strategy fires only within this daily time window. "
+                "ORB works best in the first 90 minutes: 09:30–11:00. "
+                "Signals after 11:00 are typically low-quality."
+            ),
+        }),
     ]
 
 
@@ -191,6 +216,23 @@ class BollingerConfigAdmin(SingletonModelAdmin):
             "description": "Bands = SMA(period) ± std_dev × StdDev(period). Classic setting: period=20, std_dev=2.0.",
         }),
         ("Scheduling", {"fields": ["check_interval_minutes"]}),
+        ("Re-entry / Trade Until Profit", {
+            "fields": ["stop_on_profit", "max_entries_per_day"],
+            "description": (
+                "Enable 'Trade Until Profit' to keep re-entering after a stop-loss "
+                "until a trade closes profitably, then stop for the day. "
+                "Set 'Max Entries Per Day' to limit attempts (e.g. 3–5). "
+                "0 = unlimited (not recommended)."
+            ),
+        }),
+        ("Active Hours (IST)", {
+            "fields": ["active_from", "active_until"],
+            "description": (
+                "Strategy fires only within this daily time window. "
+                "Default: 09:15–15:15 (full market day). "
+                "Example: set 14:30–15:15 to catch end-of-day mean-reversion moves."
+            ),
+        }),
     ]
 
 

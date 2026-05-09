@@ -82,6 +82,10 @@ class Command(BaseCommand):
             obj.candle_interval         = C.MA_CROSSOVER_CONFIG["candle_interval"]
             obj.quantity_per_stock      = C.MA_CROSSOVER_CONFIG["quantity_per_stock"]
             obj.check_interval_minutes  = C.MA_CROSSOVER_CONFIG["check_interval_minutes"]
+            obj.stop_on_profit          = C.MA_CROSSOVER_CONFIG.get("stop_on_profit", False)
+            obj.max_entries_per_day     = C.MA_CROSSOVER_CONFIG.get("max_entries_per_day", 0)
+            obj.active_from             = C.MA_CROSSOVER_CONFIG.get("active_from", "09:15")
+            obj.active_until            = C.MA_CROSSOVER_CONFIG.get("active_until", "15:15")
             obj.save()
             self.stdout.write("  Created MACrossoverConfig")
         else:
@@ -97,6 +101,8 @@ class Command(BaseCommand):
             obj.allow_short             = C.OPEN_RANGE_CONFIG.get("allow_short", False)
             obj.stop_on_profit          = C.OPEN_RANGE_CONFIG.get("stop_on_profit", False)
             obj.max_entries_per_day     = C.OPEN_RANGE_CONFIG.get("max_entries_per_day", 1)
+            obj.active_from             = C.OPEN_RANGE_CONFIG.get("active_from", "09:30")
+            obj.active_until            = C.OPEN_RANGE_CONFIG.get("active_until", "11:00")
             obj.save()
             self.stdout.write("  Created OpenRangeConfig")
         else:
@@ -112,6 +118,10 @@ class Command(BaseCommand):
             obj.quantity_per_stock      = C.BOLLINGER_CONFIG["quantity_per_stock"]
             obj.check_interval_minutes  = C.BOLLINGER_CONFIG["check_interval_minutes"]
             obj.allow_short             = C.BOLLINGER_CONFIG.get("allow_short", False)
+            obj.stop_on_profit          = C.BOLLINGER_CONFIG.get("stop_on_profit", False)
+            obj.max_entries_per_day     = C.BOLLINGER_CONFIG.get("max_entries_per_day", 1)
+            obj.active_from             = C.BOLLINGER_CONFIG.get("active_from", "09:15")
+            obj.active_until            = C.BOLLINGER_CONFIG.get("active_until", "15:15")
             obj.save()
             self.stdout.write("  Created BollingerConfig")
         else:

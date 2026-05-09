@@ -24,6 +24,23 @@ def _is_market_hours() -> bool:
     return _MARKET_OPEN <= now <= _MARKET_CLOSE
 
 
+def _parse_time(t_str: str) -> dtime:
+    """Parse 'HH:MM' string to datetime.time. Returns market open on error."""
+    try:
+        h, m = t_str.split(":")
+        return dtime(int(h), int(m))
+    except Exception:
+        return _MARKET_OPEN
+
+
+def _in_window(active_from: str, active_until: str) -> bool:
+    """Return True if current time falls within [active_from, active_until]."""
+    now   = datetime.now().time()
+    start = _parse_time(active_from)
+    end   = _parse_time(active_until)
+    return start <= now <= end
+
+
 class TradingScheduler:
     def __init__(
         self,
@@ -58,23 +75,35 @@ class TradingScheduler:
             schedule.every().day.at(exec_time).do(self._run, "fixed_buy")
             logger.info(f"Fixed buy scheduled at {exec_time}")
 
-        # MA Crossover — every N minutes during market hours
+        # MA Crossover — every N minutes within its configured window
         if "ma_crossover" in self.strategies:
             interval = self._ma.get("check_interval_minutes", 5)
-            schedule.every(interval).minutes.do(self._run_if_market, "ma_crossover")
-            logger.info(f"MA crossover every {interval} min")
+            af = self._ma.get("active_from", "09:15")
+            au = self._ma.get("active_until", "15:15")
+            schedule.every(interval).minutes.do(
+                self._run_in_window, "ma_crossover", af, au
+            )
+            logger.info(f"MA crossover every {interval} min  [{af}–{au}]")
 
-        # Open Range Breakout — every N minutes during market hours
+        # Open Range Breakout — every N minutes within its configured window
         if "open_range_breakout" in self.strategies:
             interval = self._or.get("check_interval_minutes", 1)
-            schedule.every(interval).minutes.do(self._run_if_market, "open_range_breakout")
-            logger.info(f"Open range breakout every {interval} min")
+            af = self._or.get("active_from", "09:30")
+            au = self._or.get("active_until", "11:00")
+            schedule.every(interval).minutes.do(
+                self._run_in_window, "open_range_breakout", af, au
+            )
+            logger.info(f"Open range breakout every {interval} min  [{af}–{au}]")
 
-        # Bollinger Band — every N minutes during market hours
+        # Bollinger Band — every N minutes within its configured window
         if "bollinger" in self.strategies:
             interval = self._bb.get("check_interval_minutes", 5)
-            schedule.every(interval).minutes.do(self._run_if_market, "bollinger")
-            logger.info(f"Bollinger Band every {interval} min")
+            af = self._bb.get("active_from", "09:15")
+            au = self._bb.get("active_until", "15:15")
+            schedule.every(interval).minutes.do(
+                self._run_in_window, "bollinger", af, au
+            )
+            logger.info(f"Bollinger Band every {interval} min  [{af}–{au}]")
 
         # Risk checks — every minute
         schedule.every(1).minutes.do(self._risk_check)
@@ -96,8 +125,18 @@ class TradingScheduler:
             logger.exception(f"Unhandled error in strategy '{name}'")
 
     def _run_if_market(self, name: str):
+        """Legacy helper — kept for any direct callers; respects market hours only."""
         if _is_market_hours():
             self._run(name)
+
+    def _run_in_window(self, name: str, active_from: str, active_until: str):
+        """Run strategy only when inside both market hours AND its own active window."""
+        if _is_market_hours() and _in_window(active_from, active_until):
+            self._run(name)
+        else:
+            logger.debug(
+                f"[{name}] outside active window ({active_from}–{active_until}), skipping."
+            )
 
     def _risk_check(self):
         if not _is_market_hours():
